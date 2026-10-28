@@ -1,0 +1,15 @@
+# Compilação Java
+bin/
+*.class
+
+# Ambientes e IDEs
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Sistema operacional
+Thumbs.db
+.DS_Store
