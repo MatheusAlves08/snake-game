@@ -1,0 +1,22 @@
+services:
+  snake-webtop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: snake-dev-desktop
+    security_opt:
+      - seccomp:unconfined # Necessário para o VS Code/Electron rodar sem restrições
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Sao_Paulo
+    volumes:
+      # Monta a raiz do projeto dentro do workspace do Linux
+      - ..:/config/workspace
+    ports:
+      # Acesso Web (Interface gráfica no navegador): http://localhost:3000
+      - "3000:3000"
+      # HTTPS (opcional): https://localhost:3001
+      - "3001:3001"
+    shm_size: "1gb"
+    restart: unless-stopped

@@ -113,6 +113,33 @@ snake-game/
    java -cp bin Main
    ```
 
+### Opção 3: Via Docker (Subsistema Linux no Navegador) 🐳
+
+Ideal caso você **não queira ou não possa instalar o Java / VS Code** diretamente no seu computador. Um ambiente Linux (Ubuntu XFCE) completo com Java 21 e VS Code é executado em container e acessado pelo seu navegador.
+
+1. **Inicie o container (execute no terminal na pasta raiz do projeto):**
+   ```bash
+   cd docker
+   docker compose up -d --build
+   ```
+2. **Acesse o ambiente no navegador:**
+   - Abra: `http://localhost:3000` (ou `https://localhost:3001`)
+3. **Desenvolva e jogue dentro do Linux:**
+   - O projeto estará montado na pasta `/config/workspace`.
+   - Você pode abrir o atalho do **Visual Studio Code** na área de trabalho do navegador.
+   - Para compilar e rodar o jogo pelo terminal do Linux:
+     ```bash
+     cd /config/workspace
+     javac -d bin src/*.java
+     java -cp bin Main
+     ```
+   - A tela gráfica do jogo aparecerá diretamente dentro da área de trabalho no navegador.
+4. **Para encerrar o ambiente:**
+   ```bash
+   cd docker
+   docker compose down
+   ```
+
 ### Executar a Bateria de Testes Automatizados
 
 Para validar todas as regras do jogo (movimento, colisões, não-sobreposição da maçã e polimorfismo):
