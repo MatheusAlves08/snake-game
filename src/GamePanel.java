@@ -30,7 +30,7 @@ import javax.swing.Timer;
 public class GamePanel extends JPanel implements ActionListener {
     // Dimensões do grid e do tabuleiro
     public static final int TILE_SIZE = 25;
-    public static final int GRID_WIDTH = 24;
+    public static final int GRID_WIDTH = 40;
     public static final int GRID_HEIGHT = 24;
     public static final int BOARD_WIDTH = GRID_WIDTH * TILE_SIZE;   // 600 pixels
     public static final int BOARD_HEIGHT = GRID_HEIGHT * TILE_SIZE; // 600 pixels
