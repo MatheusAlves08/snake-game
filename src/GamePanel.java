@@ -37,7 +37,10 @@ public class GamePanel extends JPanel implements ActionListener {
     public static final int HEADER_HEIGHT = 50;                     // Altura da barra superior (HUD)
     public static final int TOTAL_HEIGHT = BOARD_HEIGHT + HEADER_HEIGHT; // 650 pixels
 
-    private static final int GAME_DELAY_MS = 110; // Velocidade do jogo (intervalo do Timer)
+    // Configurações de velocidade e aceleração progressiva
+    public static final int INITIAL_DELAY_MS = 110; // Velocidade inicial (110ms por passo)
+    public static final int MIN_DELAY_MS = 45;      // Velocidade máxima permitida (limite de 45ms por passo)
+    public static final int SPEED_STEP = 3;         // Aceleração a cada maçã consumida (-3ms por fruta)
 
     // Componentes do jogo
     private final Snake snake;
@@ -58,6 +61,7 @@ public class GamePanel extends JPanel implements ActionListener {
     private GameState currentState;
     private int score;
     private int highScore;
+    private int currentDelay;
 
     public GamePanel() {
         setPreferredSize(new Dimension(BOARD_WIDTH, TOTAL_HEIGHT));
@@ -78,8 +82,9 @@ public class GamePanel extends JPanel implements ActionListener {
         this.highScore = 0;
 
         // Configuração do Timer para o loop do jogo
-        this.timer = new Timer(GAME_DELAY_MS, this);
-
+        this.currentDelay = INITIAL_DELAY_MS;
+        this.timer = new Timer(currentDelay, this);
+  
         // Captura de eventos do teclado
         addKeyListener(new GameKeyAdapter());
     }
@@ -89,6 +94,8 @@ public class GamePanel extends JPanel implements ActionListener {
      */
     public void startNewGame() {
         score = 0;
+        currentDelay = INITIAL_DELAY_MS;
+        timer.setDelay(currentDelay);
         snake.reset();
         apple.respawn(snake);
         currentState = GameState.RUNNING;
@@ -150,6 +157,12 @@ public class GamePanel extends JPanel implements ActionListener {
             }
             snake.grow();
             apple.respawn(snake);
+
+            // Aceleração progressiva: reduz o intervalo do Timer a cada fruta coletada
+            if (currentDelay > MIN_DELAY_MS) {
+                currentDelay = Math.max(MIN_DELAY_MS, currentDelay - SPEED_STEP);
+                timer.setDelay(currentDelay);
+            }
         }
     }
 
@@ -368,6 +381,10 @@ public class GamePanel extends JPanel implements ActionListener {
 
     public Apple getApple() {
         return apple;
+    }
+
+    public int getCurrentDelay() {
+        return currentDelay;
     }
 
     /**
