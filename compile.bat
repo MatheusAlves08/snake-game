@@ -5,7 +5,7 @@ echo ==============================================
 
 if not exist bin mkdir bin
 
-javac -d bin src/*.java
+javac -encoding UTF-8 -d bin src/*.java
 
 if %ERRORLEVEL% EQU 0 (
     echo.

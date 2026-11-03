@@ -191,31 +191,52 @@ public class Snake extends GameObject {
         int padding = 1;
         int size = tileSize - (padding * 2);
 
-        for (int i = 0; i < body.size(); i++) {
+        // Desenha do último segmento até a cabeça para sobreposição visual correta
+        for (int i = body.size() - 1; i >= 0; i--) {
             Point segment = body.get(i);
             int px = segment.x * tileSize + padding;
             int py = segment.y * tileSize + padding;
 
             if (i == 0) {
-                // Desenho da Cabeça da cobra (verde esmeralda vibrante)
-                g2d.setColor(new Color(46, 204, 113));
-                g2d.fillRoundRect(px, py, size, size, 10, 10);
+                // Sombra suave sob a cabeça
+                g2d.setColor(new Color(0, 0, 0, 50));
+                g2d.fillRoundRect(px + 1, py + 2, size, size, 12, 12);
 
-                // Desenho dos olhos orientados de acordo com a direção do movimento
+                // Gradiente vibrante na cabeça (verde esmeralda com profundidade)
+                java.awt.GradientPaint headPaint = new java.awt.GradientPaint(
+                    px, py, new Color(52, 231, 125),
+                    px, py + size, new Color(39, 174, 96)
+                );
+                g2d.setPaint(headPaint);
+                g2d.fillRoundRect(px, py, size, size, 12, 12);
+
+                // Contorno fino refinado
+                g2d.setColor(new Color(30, 130, 76, 160));
+                g2d.drawRoundRect(px, py, size - 1, size - 1, 12, 12);
+
+                // Olhos dinâmicos voltados para a direção
                 drawEyes(g2d, px, py, size);
             } else {
-                // Desenho dos segmentos do corpo com variação sutil de tom
-                int colorShift = Math.min(50, i * 2);
-                Color bodyColor = new Color(39 + (colorShift / 3), 174 - (colorShift / 2), 96);
-                g2d.setColor(bodyColor);
+                // Gradiente harmônico entre os segmentos do corpo
+                float ratio = (float) i / Math.max(1, body.size());
+                int r = (int) (46 * (1 - ratio * 0.25f));
+                int gCol = (int) (204 - ratio * 40);
+                int b = (int) (113 * (1 - ratio * 0.2f));
+
+                java.awt.GradientPaint bodyPaint = new java.awt.GradientPaint(
+                    px, py, new Color(r, Math.max(120, gCol), b),
+                    px, py + size, new Color(Math.max(25, r - 15), Math.max(95, gCol - 30), Math.max(45, b - 15))
+                );
+                g2d.setPaint(bodyPaint);
                 g2d.fillRoundRect(px + 1, py + 1, size - 2, size - 2, 8, 8);
+
+                // Brilho sutil no topo do gomo
+                g2d.setColor(new Color(255, 255, 255, 30));
+                g2d.fillRoundRect(px + 3, py + 2, size - 6, (size - 2) / 3, 6, 6);
             }
         }
     }
 
-    /**
-     * Desenha os olhos da cobra com esclera branca e pupilas pretas voltadas para a direção do movimento.
-     */
     private void drawEyes(Graphics2D g2d, int px, int py, int size) {
         g2d.setColor(Color.WHITE);
         int eyeSize = Math.max(4, size / 5);

@@ -37,7 +37,9 @@ public class GamePanel extends JPanel implements ActionListener {
     public static final int HEADER_HEIGHT = 50;                     // Altura da barra superior (HUD)
     public static final int TOTAL_HEIGHT = BOARD_HEIGHT + HEADER_HEIGHT; // 650 pixels
 
-    private static final int GAME_DELAY_MS = 110; // Velocidade do jogo (intervalo do Timer)
+    private static final int INITIAL_DELAY_MS = 110; // Velocidade inicial do jogo
+    private static final int MIN_DELAY_MS = 45;       // Limite mínimo de intervalo (velocidade máxima)
+    private static final int SPEED_STEP_MS = 3;       // Redução de intervalo a cada maçã coletada
 
     // Componentes do jogo
     private final Snake snake;
@@ -78,7 +80,7 @@ public class GamePanel extends JPanel implements ActionListener {
         this.highScore = 0;
 
         // Configuração do Timer para o loop do jogo
-        this.timer = new Timer(GAME_DELAY_MS, this);
+        this.timer = new Timer(INITIAL_DELAY_MS, this);
 
         // Captura de eventos do teclado
         addKeyListener(new GameKeyAdapter());
@@ -89,6 +91,7 @@ public class GamePanel extends JPanel implements ActionListener {
      */
     public void startNewGame() {
         score = 0;
+        timer.setDelay(INITIAL_DELAY_MS);
         snake.reset();
         apple.respawn(snake);
         currentState = GameState.RUNNING;
@@ -150,7 +153,16 @@ public class GamePanel extends JPanel implements ActionListener {
             }
             snake.grow();
             apple.respawn(snake);
+            accelerateGame();
         }
+    }
+
+    /**
+     * Acelera o jogo progressivamente a cada maçã consumida, respeitando o limite mínimo.
+     */
+    private void accelerateGame() {
+        int newDelay = Math.max(MIN_DELAY_MS, timer.getDelay() - SPEED_STEP_MS);
+        timer.setDelay(newDelay);
     }
 
     /**
@@ -170,12 +182,10 @@ public class GamePanel extends JPanel implements ActionListener {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        // 1. Desenha a barra superior de informações (HUD)
-        drawHeader(g2d);
-
-        // 2. Desenha a grade e o fundo do tabuleiro
+        // 1. Desenha a grade e o fundo do tabuleiro (limitado à área jogável)
         Graphics2D boardG = (Graphics2D) g2d.create();
         boardG.translate(0, HEADER_HEIGHT); // Translada a origem para abaixo do cabeçalho
+        boardG.setClip(0, 0, BOARD_WIDTH, BOARD_HEIGHT); // Impede que elementos desenhados vazem para fora da arena
 
         drawBoardBackground(boardG);
 
@@ -190,6 +200,9 @@ public class GamePanel extends JPanel implements ActionListener {
         }
 
         boardG.dispose();
+
+        // 2. Desenha a barra superior de informações (HUD) sobrepondo o topo
+        drawHeader(g2d);
 
         // 3. Desenha telas de sobreposição de acordo com o estado do jogo
         switch (currentState) {
@@ -212,32 +225,49 @@ public class GamePanel extends JPanel implements ActionListener {
      * Renderiza o cabeçalho superior com pontuação atual e recorde da sessão.
      */
     private void drawHeader(Graphics2D g2d) {
-        g2d.setColor(new Color(18, 20, 28));
+        // Fundo do HUD com gradiente suave elegante mantendo a identidade visual
+        java.awt.GradientPaint headerPaint = new java.awt.GradientPaint(
+            0, 0, new Color(22, 25, 36),
+            0, HEADER_HEIGHT, new Color(16, 18, 26)
+        );
+        g2d.setPaint(headerPaint);
         g2d.fillRect(0, 0, BOARD_WIDTH, HEADER_HEIGHT);
 
-        g2d.setColor(new Color(36, 40, 54));
+        // Linha divisória com brilho esmeralda sutil
+        g2d.setColor(new Color(46, 204, 113, 85));
         g2d.fillRect(0, HEADER_HEIGHT - 2, BOARD_WIDTH, 2);
 
-        // Nome do Jogo
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        // Nome do Jogo com tipografia refinada
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 17));
         g2d.setColor(new Color(46, 204, 113));
-        g2d.drawString("SNAKE GAME", 16, 32);
+        g2d.drawString("SNAKE GAME", 20, 32);
 
-        // Pontuação Atual
-        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        // Badges arredondados com contraste suave para as pontuações
+        int badgeY = 10;
+        int badgeH = 30;
+
+        // Badge Pontos Atual
+        int scoreBadgeX = (BOARD_WIDTH / 2) - 130;
+        g2d.setColor(new Color(28, 32, 46));
+        g2d.fillRoundRect(scoreBadgeX, badgeY, 120, badgeH, 10, 10);
+        g2d.setColor(new Color(52, 73, 94));
+        g2d.drawRoundRect(scoreBadgeX, badgeY, 120, badgeH, 10, 10);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
         g2d.setColor(Color.WHITE);
         String scoreText = "Pontos: " + score;
-        g2d.drawString(scoreText, 250, 32);
+        g2d.drawString(scoreText, scoreBadgeX + 16, 31);
 
-        // Melhor Pontuação (Recorde)
+        // Badge Recorde
+        int recordBadgeX = (BOARD_WIDTH / 2) + 10;
+        g2d.setColor(new Color(28, 32, 46));
+        g2d.fillRoundRect(recordBadgeX, badgeY, 140, badgeH, 10, 10);
+        g2d.setColor(new Color(241, 196, 15, 120));
+        g2d.drawRoundRect(recordBadgeX, badgeY, 140, badgeH, 10, 10);
         g2d.setColor(new Color(241, 196, 15));
         String recordText = "Recorde: " + highScore;
-        g2d.drawString(recordText, 440, 32);
+        g2d.drawString(recordText, recordBadgeX + 16, 31);
     }
 
-    /**
-     * Desenha o fundo do tabuleiro com padrão sutil de grade para guiar o jogador.
-     */
     private void drawBoardBackground(Graphics2D g2d) {
         Color darkTile = new Color(28, 30, 42);
         Color lightTile = new Color(33, 35, 48);

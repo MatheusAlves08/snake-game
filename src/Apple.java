@@ -79,20 +79,30 @@ public class Apple extends GameObject {
         int padding = 3;
         int size = tileSize - (padding * 2);
 
-        // Sombra suave sob a maçã
-        g2d.setColor(new Color(0, 0, 0, 50));
-        g2d.fillOval(px + padding + 1, py + padding + 2, size, size);
+        // Halo/brilho suave em volta da maçã (glow sutil)
+        g2d.setColor(new Color(231, 76, 60, 40));
+        g2d.fillOval(px + padding - 2, py + padding - 2, size + 4, size + 4);
 
-        // Corpo da maçã (vermelho vivo e vibrante)
-        g2d.setColor(new Color(231, 76, 60));
+        // Sombra suave sob a maçã
+        g2d.setColor(new Color(0, 0, 0, 60));
+        g2d.fillOval(px + padding + 1, py + padding + 3, size - 2, size - 2);
+
+        // Corpo da maçã com gradiente 3D (vermelho brilhante ao carmim rico)
+        java.awt.GradientPaint applePaint = new java.awt.GradientPaint(
+            px + padding, py + padding, new Color(255, 99, 88),
+            px + padding, py + padding + size, new Color(192, 57, 43)
+        );
+        g2d.setPaint(applePaint);
         g2d.fillOval(px + padding, py + padding, size, size);
 
-        // Ponto de brilho de luz na maçã (efeito de profundidade 2D)
-        g2d.setColor(new Color(255, 255, 255, 140));
+        // Ponto de brilho de luz na maçã (efeito de profundidade vítrea)
+        g2d.setColor(new Color(255, 255, 255, 180));
         g2d.fillOval(px + padding + (size / 4), py + padding + (size / 5), size / 4, size / 4);
 
-        // Folha/caule verde da maçã
-        g2d.setColor(new Color(39, 174, 96));
-        g2d.fillOval(px + (tileSize / 2) - 1, py + 1, 4, 6);
+        // Caule/folha verde com contorno
+        g2d.setColor(new Color(46, 204, 113));
+        g2d.fillOval(px + (tileSize / 2) - 1, py + 1, 5, 7);
+        g2d.setColor(new Color(30, 130, 76));
+        g2d.drawOval(px + (tileSize / 2) - 1, py + 1, 5, 7);
     }
 }
