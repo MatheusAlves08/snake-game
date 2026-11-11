@@ -23,8 +23,8 @@ import javax.swing.Timer;
  * - Herança: estende JPanel e reutiliza toda a infraestrutura gráfica do Java Swing.
  * - Polimorfismo: armazena os elementos visuais em uma lista de GameObject (List<GameObject>)
  *   e invoca draw(Graphics g) polimorficamente sobre cada objeto sem precisar conhecer
- *   sua classe concreta durante o laço de desenho.
- * - Encapsulamento: campos privados (score, highScore, timer, estado atual) com
+ *   sua classe concreta durante o laço de desenho (Princípio Aberto/Fechado - OCP).
+ * - Encapsulamento: campos privados (score, highScore, timer, estado atual, delays) com
  *   métodos dedicados para manipular o ciclo de vida da partida.
  */
 public class GamePanel extends JPanel implements ActionListener {
@@ -37,17 +37,24 @@ public class GamePanel extends JPanel implements ActionListener {
     public static final int HEADER_HEIGHT = 50;                     // Altura da barra superior (HUD)
     public static final int TOTAL_HEIGHT = BOARD_HEIGHT + HEADER_HEIGHT; // 650 pixels
 
-    private static final int GAME_DELAY_MS = 110; // Velocidade do jogo (intervalo do Timer)
+    // Configurações de velocidade e dinâmica das maçãs
+    public static final int INITIAL_DELAY_MS = 110; // Velocidade inicial (110ms por passo)
+    public static final int MIN_DELAY_MS = 45;      // Velocidade máxima permitida (limite de 45ms por passo)
+    public static final int SPEED_STEP = 3;         // Aceleração a cada maçã vermelha consumida (-3ms por fruta)
+    public static final int SLOW_STEP = 10;         // Desaceleração a cada maçã azul consumida (+10ms no Timer)
+    public static final int BLUE_APPLE_SCORE = 20;  // Pontuação bônus da maçã azul
+    public static final int BLUE_APPLE_SPAWN_INTERVAL = 4; // Surge a cada 4 maçãs vermelhas consumidas
 
     // Componentes do jogo
     private final Snake snake;
     private final Apple apple;
+    private final BlueApple blueApple;
 
     /**
      * Polimorfismo na prática:
-     * Lista genérica que armazena qualquer subclasse de GameObject (Snake, Apple).
+     * Lista genérica que armazena qualquer subclasse de GameObject (Snake, Apple, BlueApple).
      * O laço de renderização itera por esta lista chamando draw(), executando o
-     * comportamento especializado de cada classe derivada.
+     * comportamento especializado de cada classe derivada sem condicionais de tipo.
      */
     private final List<GameObject> gameObjects;
 
@@ -58,6 +65,8 @@ public class GamePanel extends JPanel implements ActionListener {
     private GameState currentState;
     private int score;
     private int highScore;
+    private int currentDelay;
+    private int applesEatenCount;
 
     public GamePanel() {
         setPreferredSize(new Dimension(BOARD_WIDTH, TOTAL_HEIGHT));
@@ -67,18 +76,22 @@ public class GamePanel extends JPanel implements ActionListener {
         // Inicialização dos objetos do jogo
         this.snake = new Snake(GRID_WIDTH / 2, GRID_HEIGHT / 2, TILE_SIZE, 3);
         this.apple = new Apple(GRID_WIDTH, GRID_HEIGHT, TILE_SIZE);
+        this.blueApple = new BlueApple(GRID_WIDTH, GRID_HEIGHT, TILE_SIZE);
 
         // Registra os objetos na lista polimórfica de GameObject
         this.gameObjects = new ArrayList<>();
-        this.gameObjects.add(apple); // Desenha a maçã primeiro (abaixo da cobra)
-        this.gameObjects.add(snake); // Desenha a cobra por cima da maçã
+        this.gameObjects.add(apple);     // Desenha a maçã vermelha primeiro (abaixo da cobra)
+        this.gameObjects.add(blueApple); // Registra a maçã azul na lista polimórfica (desenhada se ativa)
+        this.gameObjects.add(snake);     // Desenha a cobra por cima das frutas
 
         this.currentState = GameState.MENU;
         this.score = 0;
         this.highScore = 0;
+        this.applesEatenCount = 0;
 
-        // Configuração do Timer para o loop do jogo
-        this.timer = new Timer(GAME_DELAY_MS, this);
+        // Configuração do Timer para o loop do jogo com velocidade inicial
+        this.currentDelay = INITIAL_DELAY_MS;
+        this.timer = new Timer(currentDelay, this);
 
         // Captura de eventos do teclado
         addKeyListener(new GameKeyAdapter());
@@ -89,8 +102,13 @@ public class GamePanel extends JPanel implements ActionListener {
      */
     public void startNewGame() {
         score = 0;
+        applesEatenCount = 0;
+        currentDelay = INITIAL_DELAY_MS;
+        timer.setDelay(currentDelay);
         snake.reset();
         apple.respawn(snake);
+        blueApple.reset();
+
         currentState = GameState.RUNNING;
         if (!timer.isRunning()) {
             timer.start();
@@ -141,8 +159,9 @@ public class GamePanel extends JPanel implements ActionListener {
             return;
         }
 
-        // 3. Verificação de coleta da maçã
         Point head = snake.getHead();
+
+        // 3. Verificação de coleta da maçã vermelha (Aceleração e crescimento)
         if (head.x == apple.getX() && head.y == apple.getY()) {
             score += 10;
             if (score > highScore) {
@@ -150,6 +169,33 @@ public class GamePanel extends JPanel implements ActionListener {
             }
             snake.grow();
             apple.respawn(snake);
+
+            // Aceleração progressiva: reduz o intervalo do Timer a cada fruta coletada
+            if (currentDelay > MIN_DELAY_MS) {
+                currentDelay = Math.max(MIN_DELAY_MS, currentDelay - SPEED_STEP);
+                timer.setDelay(currentDelay);
+            }
+
+            // Controle de surgimento da maçã azul a cada 4 maçãs vermelhas consumidas
+            applesEatenCount++;
+            if (applesEatenCount % BLUE_APPLE_SPAWN_INTERVAL == 0 && !blueApple.isActive()) {
+                blueApple.respawn(snake);
+                blueApple.setActive(true);
+            }
+        }
+
+        // 4. Verificação de coleta da maçã azul (Desaceleração especial)
+        if (blueApple.isActive() && head.x == blueApple.getX() && head.y == blueApple.getY()) {
+            score += BLUE_APPLE_SCORE;
+            if (score > highScore) {
+                highScore = score;
+            }
+
+            // Desaceleração: alivia o intervalo do Timer, respeitando o ritmo inicial padrão (110ms)
+            currentDelay = Math.min(INITIAL_DELAY_MS, currentDelay + SLOW_STEP);
+            timer.setDelay(currentDelay);
+
+            blueApple.setActive(false); // Recolhe a maçã azul até o próximo ciclo de spawn
         }
     }
 
@@ -181,9 +227,9 @@ public class GamePanel extends JPanel implements ActionListener {
 
         /*
          * DEMONSTRAÇÃO DO POLIMORFISMO:
-         * Iteramos sobre a lista de GameObjects. Cada objeto (Apple, Snake)
+         * Iteramos sobre a lista de GameObjects. Cada objeto (Apple, BlueApple, Snake)
          * executa sua própria versão do método draw(Graphics g).
-         * O GamePanel não precisa saber se o objeto é uma cobra ou maçã.
+         * O GamePanel não precisa saber se o objeto é uma cobra, maçã vermelha ou maçã azul.
          */
         for (GameObject obj : gameObjects) {
             obj.draw(boardG);
@@ -368,6 +414,18 @@ public class GamePanel extends JPanel implements ActionListener {
 
     public Apple getApple() {
         return apple;
+    }
+
+    public BlueApple getBlueApple() {
+        return blueApple;
+    }
+
+    public int getCurrentDelay() {
+        return currentDelay;
+    }
+
+    public int getApplesEatenCount() {
+        return applesEatenCount;
     }
 
     /**
