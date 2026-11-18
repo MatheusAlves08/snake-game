@@ -2,7 +2,7 @@ import java.awt.Point;
 
 /**
  * Suite de testes automatizados para validação das regras de negócio do Snake Game
- * e dos pilares da Programação Orientada a Objetos.
+ * e dos 4 pilares da Programação Orientada a Objetos (incluindo Apple e BlueApple).
  */
 public class GameTest {
     private static int testsPassed = 0;
@@ -21,6 +21,8 @@ public class GameTest {
         testSelfCollision();
         testAppleRespawnNotOnSnake();
         testPolymorphismContract();
+        testBlueAppleInheritanceAndState();
+        testBlueAppleRespawnNotOnSnake();
 
         System.out.println("\n--------------------------------------------------");
         System.out.println("RESULTADO FINAL: " + testsPassed + " passaram, " + testsFailed + " falharam.");
@@ -128,10 +130,37 @@ public class GameTest {
         // Testando a abstração e polimorfismo via referência da classe abstrata GameObject
         GameObject obj1 = new Snake(5, 5, 25, 3);
         GameObject obj2 = new Apple(24, 24, 25);
+        GameObject obj3 = new BlueApple(24, 24, 25);
 
         assertTrue("obj1 deve ser instância de GameObject", obj1 instanceof GameObject);
         assertTrue("obj2 deve ser instância de GameObject", obj2 instanceof GameObject);
-        assertEquals("Tamanho do tile deve ser 25 em ambos", 25, obj1.getTileSize());
-        assertEquals("Tamanho do tile deve ser 25 em ambos", 25, obj2.getTileSize());
+        assertTrue("obj3 deve ser instância de GameObject", obj3 instanceof GameObject);
+        assertEquals("Tamanho do tile deve ser 25 em todos", 25, obj1.getTileSize());
+        assertEquals("Tamanho do tile deve ser 25 em todos", 25, obj2.getTileSize());
+        assertEquals("Tamanho do tile deve ser 25 em todos", 25, obj3.getTileSize());
+    }
+
+    private static void testBlueAppleInheritanceAndState() {
+        BlueApple blueApple = new BlueApple(24, 24, 25);
+        assertTrue("BlueApple deve herdar de Apple", blueApple instanceof Apple);
+        assertTrue("BlueApple deve ser um GameObject", blueApple instanceof GameObject);
+        assertTrue("BlueApple deve iniciar desativada", !blueApple.isActive());
+
+        blueApple.setActive(true);
+        assertTrue("BlueApple deve estar ativa após setActive(true)", blueApple.isActive());
+
+        blueApple.reset();
+        assertTrue("BlueApple deve ser desativada após reset()", !blueApple.isActive());
+    }
+
+    private static void testBlueAppleRespawnNotOnSnake() {
+        Snake snake = new Snake(5, 5, 25, 5);
+        BlueApple blueApple = new BlueApple(10, 10, 25);
+
+        for (int i = 0; i < 50; i++) {
+            blueApple.respawn(snake);
+            assertTrue("A maçã azul gerada não deve coincidir com o corpo da cobra",
+                       !snake.occupies(blueApple.getX(), blueApple.getY()));
+        }
     }
 }
