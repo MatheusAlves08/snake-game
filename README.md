@@ -106,11 +106,11 @@ snake-game/
 1. Abra o terminal na pasta raiz do projeto (`snake-game`):
 2. **Compile as classes:**
    ```bash
-   javac -d bin src/*.java
+   javac -encoding UTF-8 -d bin src/*.java
    ```
 3. **Execute o jogo:**
    ```bash
-   java -cp bin Main
+   java -Dfile.encoding=UTF-8 -cp bin Main
    ```
 
 ### Opção 3: Via Docker (Subsistema Linux no Navegador) 🐳
@@ -144,8 +144,8 @@ Ideal caso você **não queira ou não possa instalar o Java / VS Code** diretam
 
 Para validar todas as regras do jogo (movimento, colisões, não-sobreposição da maçã e polimorfismo):
 ```bash
-javac -cp bin -d bin test/GameTest.java
-java -cp bin GameTest
+javac -encoding UTF-8 -cp bin -d bin test/GameTest.java
+java -Dfile.encoding=UTF-8 -cp bin GameTest
 ```
 
 ---
