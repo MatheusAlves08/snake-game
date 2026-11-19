@@ -12,47 +12,63 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
 /**
- * Painel principal do jogo responsável pela lógica do jogo, ciclo de atualização,
+ * Painel principal do jogo responsável pela lógica do jogo, ciclo de
+ * atualização,
  * captura de teclado e renderização gráfica.
  *
  * Pilares da Programação Orientada a Objetos:
- * - Herança: estende JPanel e reutiliza toda a infraestrutura gráfica do Java Swing.
- * - Polimorfismo: armazena os elementos visuais em uma lista de GameObject (List<GameObject>)
- *   e invoca draw(Graphics g) polimorficamente sobre cada objeto sem precisar conhecer
- *   sua classe concreta durante o laço de desenho (Princípio Aberto/Fechado - OCP).
- * - Encapsulamento: campos privados (score, highScore, timer, estado atual, delays) com
- *   métodos dedicados para manipular o ciclo de vida da partida.
+ * - Herança: estende JPanel e reutiliza toda a infraestrutura gráfica do Java
+ * Swing.
+ * - Polimorfismo: armazena os elementos visuais em uma lista de GameObject
+ * (List<GameObject>)
+ * e invoca draw(Graphics g) polimorficamente sobre cada objeto sem precisar
+ * conhecer
+ * sua classe concreta durante o laço de desenho (Princípio Aberto/Fechado -
+ * OCP).
+ * - Encapsulamento: campos privados (score, highScore, timer, estado atual,
+ * delays, goldenModeActive) com
+ * métodos dedicados para manipular o ciclo de vida da partida de forma segura.
+ * - Abstração: opera entidades através de contratos de posicionamento e
+ * desenho, sem conhecer
+ * detalhes internos de renderização ou cálculos gráficos específicos.
  */
 public class GamePanel extends JPanel implements ActionListener {
     // Dimensões do grid e do tabuleiro
     public static final int TILE_SIZE = 25;
     public static final int GRID_WIDTH = 24;
     public static final int GRID_HEIGHT = 24;
-    public static final int BOARD_WIDTH = GRID_WIDTH * TILE_SIZE;   // 600 pixels
+    public static final int BOARD_WIDTH = GRID_WIDTH * TILE_SIZE; // 600 pixels
     public static final int BOARD_HEIGHT = GRID_HEIGHT * TILE_SIZE; // 600 pixels
-    public static final int HEADER_HEIGHT = 50;                     // Altura da barra superior (HUD)
+    public static final int HEADER_HEIGHT = 50; // Altura da barra superior (HUD)
     public static final int TOTAL_HEIGHT = BOARD_HEIGHT + HEADER_HEIGHT; // 650 pixels
 
     // Configurações de velocidade e dinâmica das maçãs
     public static final int INITIAL_DELAY_MS = 110; // Velocidade inicial (110ms por passo)
-    public static final int MIN_DELAY_MS = 45;      // Velocidade máxima permitida (limite de 45ms por passo)
-    public static final int SPEED_STEP = 3;         // Aceleração a cada maçã vermelha consumida (-3ms por fruta)
-    public static final int SLOW_STEP = 10;         // Desaceleração a cada maçã azul consumida (+10ms no Timer)
-    public static final int BLUE_APPLE_SCORE = 20;  // Pontuação bônus da maçã azul
+    public static final int MIN_DELAY_MS = 45; // Velocidade máxima permitida (limite de 45ms por passo)
+    public static final int SPEED_STEP = 3; // Aceleração a cada maçã vermelha consumida (-3ms por fruta)
+    public static final int SLOW_STEP = 10; // Desaceleração a cada maçã azul consumida (+10ms no Timer)
+    public static final int BLUE_APPLE_SCORE = 20; // Pontuação bônus da maçã azul
     public static final int BLUE_APPLE_SPAWN_INTERVAL = 4; // Surge a cada 4 maçãs vermelhas consumidas
+    public static final int GOLDEN_APPLE_SCORE = 100; // Pontuação bônus da maçã azul
+    public static final int GOLDEN_APPLE_SPAWN_INTERVAL = 10; // Surge a cada 10 maçãs vermelhas consumidas
+
+    private static final Random RANDOM = new Random();
 
     // Componentes do jogo
     private final Snake snake;
     private final Apple apple;
     private final BlueApple blueApple;
+    private final GoldenApple goldenApple;
 
     /**
      * Polimorfismo na prática:
-     * Lista genérica que armazena qualquer subclasse de GameObject (Snake, Apple, BlueApple).
+     * Lista genérica que armazena qualquer subclasse de GameObject (Snake, Apple,
+     * BlueApple, GoldenApple).
      * O laço de renderização itera por esta lista chamando draw(), executando o
      * comportamento especializado de cada classe derivada sem condicionais de tipo.
      */
@@ -67,6 +83,7 @@ public class GamePanel extends JPanel implements ActionListener {
     private int highScore;
     private int currentDelay;
     private int applesEatenCount;
+    private boolean goldenModeActive; // Modo especial de baixa visibilidade / cobra dourada neon
 
     public GamePanel() {
         setPreferredSize(new Dimension(BOARD_WIDTH, TOTAL_HEIGHT));
@@ -77,17 +94,20 @@ public class GamePanel extends JPanel implements ActionListener {
         this.snake = new Snake(GRID_WIDTH / 2, GRID_HEIGHT / 2, TILE_SIZE, 3);
         this.apple = new Apple(GRID_WIDTH, GRID_HEIGHT, TILE_SIZE);
         this.blueApple = new BlueApple(GRID_WIDTH, GRID_HEIGHT, TILE_SIZE);
+        this.goldenApple = new GoldenApple(GRID_WIDTH, GRID_HEIGHT, TILE_SIZE);
 
         // Registra os objetos na lista polimórfica de GameObject
         this.gameObjects = new ArrayList<>();
-        this.gameObjects.add(apple);     // Desenha a maçã vermelha primeiro (abaixo da cobra)
+        this.gameObjects.add(apple); // Desenha a maçã vermelha primeiro (abaixo da cobra)
         this.gameObjects.add(blueApple); // Registra a maçã azul na lista polimórfica (desenhada se ativa)
-        this.gameObjects.add(snake);     // Desenha a cobra por cima das frutas
+        this.gameObjects.add(goldenApple); // Registra a Golden Apple na lista polimórfica (desenhada se ativa)
+        this.gameObjects.add(snake); // Desenha a cobra por cima das frutas
 
         this.currentState = GameState.MENU;
         this.score = 0;
         this.highScore = 0;
         this.applesEatenCount = 0;
+        this.goldenModeActive = false;
 
         // Configuração do Timer para o loop do jogo com velocidade inicial
         this.currentDelay = INITIAL_DELAY_MS;
@@ -98,16 +118,35 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     /**
+     * Ativa o modo dourado neon de baixa visibilidade.
+     */
+    private void activateGoldenMode() {
+        this.goldenModeActive = true;
+        this.snake.setGoldenMode(true);
+    }
+
+    /**
+     * Desativa o modo dourado e restaura a visualização normal.
+     */
+    private void deactivateGoldenMode() {
+        this.goldenModeActive = false;
+        this.snake.setGoldenMode(false);
+    }
+
+    /**
      * Inicia uma nova partida a partir do menu ou do reinício.
      */
     public void startNewGame() {
         score = 0;
         applesEatenCount = 0;
+        deactivateGoldenMode();
         currentDelay = INITIAL_DELAY_MS;
         timer.setDelay(currentDelay);
+
         snake.reset();
         apple.respawn(snake);
         blueApple.reset();
+        goldenApple.reset();
 
         currentState = GameState.RUNNING;
         if (!timer.isRunning()) {
@@ -142,6 +181,68 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     /**
+     * Localiza com segurança uma coordenada livre na grade do jogo, garantindo que
+     * uma nova fruta nunca surja sobre a cobra ou sobre outra fruta ativa.
+     * Evita loops infinitos de busca mesmo com tabuleiro ocupado.
+     */
+    private Point findFreePosition() {
+        List<Point> freePositions = new ArrayList<>();
+        for (int c = 0; c < GRID_WIDTH; c++) {
+            for (int r = 0; r < GRID_HEIGHT; r++) {
+                if (snake.occupies(c, r)) {
+                    continue;
+                }
+                if (apple.getX() == c && apple.getY() == r) {
+                    continue;
+                }
+                if (blueApple.isActive() && blueApple.getX() == c && blueApple.getY() == r) {
+                    continue;
+                }
+                if (goldenApple.isActive() && goldenApple.getX() == c && goldenApple.getY() == r) {
+                    continue;
+                }
+                freePositions.add(new Point(c, r));
+            }
+        }
+
+        if (freePositions.isEmpty()) {
+            return null; // Nenhuma célula livre disponível
+        }
+
+        return freePositions.get(RANDOM.nextInt(freePositions.size()));
+    }
+
+    private void respawnAppleSafely() {
+        Point p = findFreePosition();
+        if (p != null) {
+            apple.setX(p.x);
+            apple.setY(p.y);
+        } else {
+            apple.respawn(snake);
+        }
+    }
+
+    private void respawnBlueAppleSafely() {
+        Point p = findFreePosition();
+        if (p != null) {
+            blueApple.setX(p.x);
+            blueApple.setY(p.y);
+        } else {
+            blueApple.respawn(snake);
+        }
+    }
+
+    private void respawnGoldenAppleSafely() {
+        Point p = findFreePosition();
+        if (p != null) {
+            goldenApple.setX(p.x);
+            goldenApple.setY(p.y);
+        } else {
+            goldenApple.respawn(snake);
+        }
+    }
+
+    /**
      * Executa as regras de negócio de cada passo do jogo.
      */
     private void updateGame() {
@@ -161,14 +262,28 @@ public class GamePanel extends JPanel implements ActionListener {
 
         Point head = snake.getHead();
 
-        // 3. Verificação de coleta da maçã vermelha (Aceleração e crescimento)
+        // 3. Verificação de coleta da Golden Apple (Ativa o modo dourado neon)
+        if (goldenApple.isActive() && head.x == goldenApple.getX() && head.y == goldenApple.getY()) {
+            goldenApple.setActive(false);
+            score += GOLDEN_APPLE_SCORE;
+            if (score > highScore) {
+                highScore = score;
+            }
+            activateGoldenMode();
+        }
+
+        // 4. Verificação de coleta da maçã vermelha (Aceleração e crescimento)
         if (head.x == apple.getX() && head.y == apple.getY()) {
             score += 10;
             if (score > highScore) {
                 highScore = score;
             }
             snake.grow();
-            apple.respawn(snake);
+
+            // A coleta de qualquer maçã comum encerra o modo dourado
+            if (goldenModeActive) {
+                deactivateGoldenMode();
+            }
 
             // Aceleração progressiva: reduz o intervalo do Timer a cada fruta coletada
             if (currentDelay > MIN_DELAY_MS) {
@@ -176,22 +291,37 @@ public class GamePanel extends JPanel implements ActionListener {
                 timer.setDelay(currentDelay);
             }
 
-            // Controle de surgimento da maçã azul a cada 4 maçãs vermelhas consumidas
             applesEatenCount++;
+
+            // Controle de surgimento da maçã azul a cada 4 maçãs vermelhas consumidas
             if (applesEatenCount % BLUE_APPLE_SPAWN_INTERVAL == 0 && !blueApple.isActive()) {
-                blueApple.respawn(snake);
+                respawnBlueAppleSafely();
                 blueApple.setActive(true);
             }
+
+            // Controle de surgimento da Golden Apple a cada 10 maçãs vermelhas consumidas
+            if (applesEatenCount % GOLDEN_APPLE_SPAWN_INTERVAL == 0 && !goldenApple.isActive()) {
+                respawnGoldenAppleSafely();
+                goldenApple.setActive(true);
+            }
+
+            respawnAppleSafely();
         }
 
-        // 4. Verificação de coleta da maçã azul (Desaceleração especial)
+        // 5. Verificação de coleta da maçã azul (Desaceleração especial)
         if (blueApple.isActive() && head.x == blueApple.getX() && head.y == blueApple.getY()) {
             score += BLUE_APPLE_SCORE;
             if (score > highScore) {
                 highScore = score;
             }
 
-            // Desaceleração: alivia o intervalo do Timer, respeitando o ritmo inicial padrão (110ms)
+            // A coleta de qualquer maçã comum encerra o modo dourado
+            if (goldenModeActive) {
+                deactivateGoldenMode();
+            }
+
+            // Desaceleração: alivia o intervalo do Timer, respeitando o ritmo inicial
+            // padrão (110ms)
             currentDelay = Math.min(INITIAL_DELAY_MS, currentDelay + SLOW_STEP);
             timer.setDelay(currentDelay);
 
@@ -216,6 +346,21 @@ public class GamePanel extends JPanel implements ActionListener {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
+        // Caso o modo dourado esteja ativo durante a partida:
+        // Renderiza o cenário 100% preto, oculta HUD, fundo e frutas, exibindo apenas a
+        // cobra dourada neon.
+        if (goldenModeActive && currentState == GameState.RUNNING) {
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, BOARD_WIDTH, TOTAL_HEIGHT);
+
+            Graphics2D snakeG = (Graphics2D) g2d.create();
+            snakeG.translate(0, HEADER_HEIGHT); // Mantém a cobra devidamente alinhada ao grid
+            snake.draw(snakeG);
+            snakeG.dispose();
+            return;
+        }
+
+        // Fluxo normal de renderização (ou quando pausado/game over):
         // 1. Desenha a barra superior de informações (HUD)
         drawHeader(g2d);
 
@@ -227,9 +372,11 @@ public class GamePanel extends JPanel implements ActionListener {
 
         /*
          * DEMONSTRAÇÃO DO POLIMORFISMO:
-         * Iteramos sobre a lista de GameObjects. Cada objeto (Apple, BlueApple, Snake)
+         * Iteramos sobre a lista de GameObjects. Cada objeto (Apple, BlueApple,
+         * GoldenApple, Snake)
          * executa sua própria versão do método draw(Graphics g).
-         * O GamePanel não precisa saber se o objeto é uma cobra, maçã vermelha ou maçã azul.
+         * O GamePanel não precisa saber se o objeto é uma cobra, maçã vermelha, maçã
+         * azul ou golden apple.
          */
         for (GameObject obj : gameObjects) {
             obj.draw(boardG);
@@ -418,6 +565,14 @@ public class GamePanel extends JPanel implements ActionListener {
 
     public BlueApple getBlueApple() {
         return blueApple;
+    }
+
+    public GoldenApple getGoldenApple() {
+        return goldenApple;
+    }
+
+    public boolean isGoldenModeActive() {
+        return goldenModeActive;
     }
 
     public int getCurrentDelay() {
