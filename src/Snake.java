@@ -12,8 +12,8 @@ import java.util.List;
  *
  * Pilares da Programação Orientada a Objetos:
  * - Herança: estende a classe base GameObject (extends GameObject).
- * - Encapsulamento: o corpo da cobra, as direções e as variáveis de controle são privados.
- *   Modificações de estado só ocorrem através de métodos seguros como move(), grow() e setDirection().
+ * - Encapsulamento: o corpo da cobra, as direções, variáveis de controle e o modo visual
+ *   dourado (goldenMode) são privados. Modificações de estado ocorrem através de métodos seguros.
  *   O método getBody() retorna uma coleção não-modificável para proteger a estrutura interna.
  * - Polimorfismo: sobrescreve os métodos abstratos draw(Graphics g) e reset() da classe GameObject.
  */
@@ -23,6 +23,7 @@ public class Snake extends GameObject {
     private Direction currentDirection;
     private Direction nextDirection;
     private boolean growing;
+    private boolean goldenMode; // Estado visual do modo dourado neon
     private final int initialX;
     private final int initialY;
     private final int initialLength;
@@ -55,6 +56,7 @@ public class Snake extends GameObject {
         this.currentDirection = Direction.RIGHT;
         this.nextDirection = Direction.RIGHT;
         this.growing = false;
+        this.goldenMode = false; // Restaura a aparência normal verde
 
         // Monta o corpo inicial da cobra alinhado horizontalmente para a direita
         for (int i = 0; i < initialLength; i++) {
@@ -77,6 +79,17 @@ public class Snake extends GameObject {
 
     public Direction getCurrentDirection() {
         return currentDirection;
+    }
+
+    /**
+     * Encapsulamento: gerencia o modo visual dourado neon.
+     */
+    public boolean isGoldenMode() {
+        return goldenMode;
+    }
+
+    public void setGoldenMode(boolean goldenMode) {
+        this.goldenMode = goldenMode;
     }
 
     /**
@@ -180,6 +193,7 @@ public class Snake extends GameObject {
     /**
      * Polimorfismo: implementação do método draw da classe GameObject específica para a cobra.
      * Renderiza cada segmento com cantos arredondados, gradiente e olhos dinâmicos na cabeça.
+     * Quando goldenMode está ativo, utiliza paleta dourada neon com brilho especial.
      *
      * @param g contexto gráfico
      */
@@ -197,26 +211,45 @@ public class Snake extends GameObject {
             int py = segment.y * tileSize + padding;
 
             if (i == 0) {
-                // Desenho da Cabeça da cobra (verde esmeralda vibrante)
-                g2d.setColor(new Color(46, 204, 113));
-                g2d.fillRoundRect(px, py, size, size, 10, 10);
+                if (goldenMode) {
+                    // 1. Aura neon dourada em torno da cabeça
+                    g2d.setColor(new Color(255, 235, 59, 100));
+                    g2d.fillRoundRect(px - 2, py - 2, size + 4, size + 4, 12, 12);
+
+                    // 2. Cabeça dourada viva e luminosa
+                    g2d.setColor(new Color(255, 215, 0));
+                    g2d.fillRoundRect(px, py, size, size, 10, 10);
+                } else {
+                    // Desenho padrão da Cabeça da cobra (verde esmeralda vibrante)
+                    g2d.setColor(new Color(46, 204, 113));
+                    g2d.fillRoundRect(px, py, size, size, 10, 10);
+                }
 
                 // Desenho dos olhos orientados de acordo com a direção do movimento
                 drawEyes(g2d, px, py, size);
             } else {
-                // Desenho dos segmentos do corpo com variação sutil de tom
-                int colorShift = Math.min(50, i * 2);
-                Color bodyColor = new Color(39 + (colorShift / 3), 174 - (colorShift / 2), 96);
-                g2d.setColor(bodyColor);
-                g2d.fillRoundRect(px + 1, py + 1, size - 2, size - 2, 8, 8);
+                if (goldenMode) {
+                    // Corpo da cobra dourada com variação dourada metálica
+                    int colorShift = Math.min(40, i * 2);
+                    Color bodyColor = new Color(255 - (colorShift / 2), 193 - (colorShift / 3), 7);
+                    g2d.setColor(bodyColor);
+                    g2d.fillRoundRect(px + 1, py + 1, size - 2, size - 2, 8, 8);
+                } else {
+                    // Desenho dos segmentos do corpo padrão com variação sutil de verde
+                    int colorShift = Math.min(50, i * 2);
+                    Color bodyColor = new Color(39 + (colorShift / 3), 174 - (colorShift / 2), 96);
+                    g2d.setColor(bodyColor);
+                    g2d.fillRoundRect(px + 1, py + 1, size - 2, size - 2, 8, 8);
+                }
             }
         }
     }
 
     /**
-     * Desenha os olhos da cobra com esclera branca e pupilas pretas voltadas para a direção do movimento.
+     * Desenha os olhos da cobra com esclera e pupilas voltadas para a direção do movimento.
      */
     private void drawEyes(Graphics2D g2d, int px, int py, int size) {
+        // No modo dourado, utiliza esclera branca pura e pupila preta de alto contraste
         g2d.setColor(Color.WHITE);
         int eyeSize = Math.max(4, size / 5);
         int pupilSize = Math.max(2, eyeSize / 2);
