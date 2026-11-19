@@ -2,7 +2,7 @@ import java.awt.Point;
 
 /**
  * Suite de testes automatizados para validação das regras de negócio do Snake Game
- * e dos 4 pilares da Programação Orientada a Objetos (incluindo Apple e BlueApple).
+ * e dos 4 pilares da Programação Orientada a Objetos (incluindo Apple, BlueApple e GoldenApple).
  */
 public class GameTest {
     private static int testsPassed = 0;
@@ -23,6 +23,10 @@ public class GameTest {
         testPolymorphismContract();
         testBlueAppleInheritanceAndState();
         testBlueAppleRespawnNotOnSnake();
+        testGoldenAppleInheritanceAndState();
+        testGoldenAppleRespawnNotOnSnake();
+        testSnakeGoldenModeVisualState();
+        testGamePanelGoldenAppleIntegration();
 
         System.out.println("\n--------------------------------------------------");
         System.out.println("RESULTADO FINAL: " + testsPassed + " passaram, " + testsFailed + " falharam.");
@@ -131,13 +135,16 @@ public class GameTest {
         GameObject obj1 = new Snake(5, 5, 25, 3);
         GameObject obj2 = new Apple(24, 24, 25);
         GameObject obj3 = new BlueApple(24, 24, 25);
+        GameObject obj4 = new GoldenApple(24, 24, 25);
 
         assertTrue("obj1 deve ser instância de GameObject", obj1 instanceof GameObject);
         assertTrue("obj2 deve ser instância de GameObject", obj2 instanceof GameObject);
         assertTrue("obj3 deve ser instância de GameObject", obj3 instanceof GameObject);
+        assertTrue("obj4 deve ser instância de GameObject", obj4 instanceof GameObject);
         assertEquals("Tamanho do tile deve ser 25 em todos", 25, obj1.getTileSize());
         assertEquals("Tamanho do tile deve ser 25 em todos", 25, obj2.getTileSize());
         assertEquals("Tamanho do tile deve ser 25 em todos", 25, obj3.getTileSize());
+        assertEquals("Tamanho do tile deve ser 25 em todos", 25, obj4.getTileSize());
     }
 
     private static void testBlueAppleInheritanceAndState() {
@@ -162,5 +169,51 @@ public class GameTest {
             assertTrue("A maçã azul gerada não deve coincidir com o corpo da cobra",
                        !snake.occupies(blueApple.getX(), blueApple.getY()));
         }
+    }
+
+    private static void testGoldenAppleInheritanceAndState() {
+        GoldenApple goldenApple = new GoldenApple(24, 24, 25);
+        assertTrue("GoldenApple deve herdar de Apple", goldenApple instanceof Apple);
+        assertTrue("GoldenApple deve ser um GameObject", goldenApple instanceof GameObject);
+        assertTrue("GoldenApple deve iniciar desativada", !goldenApple.isActive());
+
+        goldenApple.setActive(true);
+        assertTrue("GoldenApple deve estar ativa após setActive(true)", goldenApple.isActive());
+
+        goldenApple.reset();
+        assertTrue("GoldenApple deve ser desativada após reset()", !goldenApple.isActive());
+    }
+
+    private static void testGoldenAppleRespawnNotOnSnake() {
+        Snake snake = new Snake(5, 5, 25, 5);
+        GoldenApple goldenApple = new GoldenApple(10, 10, 25);
+
+        for (int i = 0; i < 50; i++) {
+            goldenApple.respawn(snake);
+            assertTrue("A Golden Apple gerada não deve coincidir com o corpo da cobra",
+                       !snake.occupies(goldenApple.getX(), goldenApple.getY()));
+        }
+    }
+
+    private static void testSnakeGoldenModeVisualState() {
+        Snake snake = new Snake(5, 5, 25, 3);
+        assertTrue("Cobra deve iniciar com modo dourado desativado", !snake.isGoldenMode());
+
+        snake.setGoldenMode(true);
+        assertTrue("Cobra deve estar com modo dourado ativado", snake.isGoldenMode());
+
+        snake.reset();
+        assertTrue("reset() deve restaurar modo dourado para false", !snake.isGoldenMode());
+    }
+
+    private static void testGamePanelGoldenAppleIntegration() {
+        GamePanel panel = new GamePanel();
+        assertTrue("GamePanel deve iniciar com goldenModeActive falso", !panel.isGoldenModeActive());
+        assertTrue("GoldenApple deve iniciar desativada no GamePanel", !panel.getGoldenApple().isActive());
+
+        // Inicia partida
+        panel.startNewGame();
+        assertTrue("Ao iniciar nova partida, goldenModeActive deve permanecer falso", !panel.isGoldenModeActive());
+        assertTrue("Ao iniciar nova partida, GoldenApple deve permanecer desativada", !panel.getGoldenApple().isActive());
     }
 }
